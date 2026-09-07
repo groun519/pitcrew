@@ -19,14 +19,27 @@
 </p>
 
 <p align="center">
+  <a href="#how-it-works">How it works</a> &middot;
+  <a href="#install">Install</a> &middot;
+  <a href="#use">Use</a> &middot;
+  <a href="#v1-is-intentionally-missing-things">V1 boundaries</a>
+</p>
+
+<p align="center">
+  <img src="assets/crew-banner.svg" width="1100" alt="Pit Crew roles in a racing garage">
+</p>
+
+<p align="center">
   <strong>The Crew Chief makes the call. The Mechanic gets under the hood. The Inspector sends it back only when something is actually wrong.</strong>
 </p>
 
 ---
 
+## Why Pit Crew?
+
 Give one strong model a coding task and it can do everything: understand the request, choose the architecture, write the code, inspect its own diff, patch small mistakes, inspect again, and keep going until the job is clean.
 
-Pit Crew gives that model a crew instead.
+**Pit Crew gives that model a crew instead.**
 
 The main thread keeps the work that deserves high-level judgment. Luna implements a bounded packet. Sol inspects the resulting diff and only sends back corrections that have one obvious answer. Anything that changes the design goes straight back upstairs.
 
@@ -202,7 +215,7 @@ That review asks different questions from Sol:
 
 ## Install
 
-### Codex app
+### Codex app (recommended)
 
 1. Open **Plugins**.
 2. Add a GitHub marketplace.
@@ -275,6 +288,7 @@ pitcrew/
 |-- assets/
 |   |-- logo.svg
 |   |-- logo-dark.svg
+|   |-- crew-banner.svg
 |   |-- workflow.svg
 |   `-- social-preview.svg
 |-- plugins/
