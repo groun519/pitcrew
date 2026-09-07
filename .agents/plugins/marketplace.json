@@ -1,0 +1,16 @@
+{
+  "name": "pitcrew",
+  "interface": {
+    "displayName": "Pit Crew"
+  },
+  "plugins": [
+    {
+      "name": "pitcrew",
+      "description": "Crew Chief decides. Luna builds. Sol inspects.",
+      "source": {
+        "source": "local",
+        "path": "./"
+      }
+    }
+  ]
+}
