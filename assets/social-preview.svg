@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">Pit Crew social preview</title>
+  <desc id="desc">Pit Crew, a multi-model development crew for Codex.</desc>
+  <rect width="1280" height="640" fill="#0d1117"/>
+  <circle cx="180" cy="320" r="112" fill="none" stroke="#f0f6fc" stroke-width="18"/>
+  <circle cx="180" cy="320" r="76" fill="none" stroke="#f0f6fc" stroke-width="6" opacity="0.18"/>
+  <path d="M180 284V225M151 338l-53 31M209 338l53 31" fill="none" stroke="#f0f6fc" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="180" cy="218" r="19" fill="#ff6b47" stroke="#f0f6fc" stroke-width="6"/>
+  <circle cx="92" cy="373" r="19" fill="#ff6b47" stroke="#f0f6fc" stroke-width="6"/>
+  <circle cx="268" cy="373" r="19" fill="#ff6b47" stroke="#f0f6fc" stroke-width="6"/>
+  <circle cx="180" cy="320" r="47" fill="#f0f6fc"/>
+  <text x="164" y="340" fill="#0d1117" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="58" font-weight="800">P</text>
+
+  <text x="365" y="250" fill="#f0f6fc" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="86" font-weight="800">Pit Crew</text>
+  <text x="369" y="309" fill="#ff8a6d" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="28" font-weight="700">ONE DECIDES. ONE BUILDS. ONE INSPECTS.</text>
+  <text x="369" y="370" fill="#8b949e" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="24">A bounded multi-model development workflow for Codex.</text>
+  <g font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="18">
+    <rect x="369" y="420" width="144" height="42" rx="21" fill="#161b22" stroke="#30363d"/>
+    <text x="397" y="447" fill="#c9d1d9">ASTRA</text>
+    <rect x="529" y="420" width="144" height="42" rx="21" fill="#161b22" stroke="#30363d"/>
+    <text x="569" y="447" fill="#c9d1d9">LUNA</text>
+    <rect x="689" y="420" width="144" height="42" rx="21" fill="#161b22" stroke="#30363d"/>
+    <text x="733" y="447" fill="#c9d1d9">SOL</text>
+  </g>
+</svg>

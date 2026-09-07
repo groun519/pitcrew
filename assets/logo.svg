@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 480" role="img" aria-labelledby="title desc">
+  <title id="title">Pit Crew</title>
+  <desc id="desc">A racing wheel mark with three crew nodes around a central P.</desc>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="240" cy="240" r="156" stroke="#111111" stroke-width="24"/>
+    <circle cx="240" cy="240" r="108" stroke="#111111" stroke-width="8" opacity="0.18"/>
+    <path d="M240 188V105M197 265l-72 42M283 265l72 42" stroke="#111111" stroke-width="18"/>
+    <circle cx="240" cy="96" r="28" fill="#ff5a36" stroke="#111111" stroke-width="8"/>
+    <circle cx="116" cy="312" r="28" fill="#ff5a36" stroke="#111111" stroke-width="8"/>
+    <circle cx="364" cy="312" r="28" fill="#ff5a36" stroke="#111111" stroke-width="8"/>
+    <circle cx="240" cy="240" r="68" fill="#111111" stroke="#111111" stroke-width="8"/>
+  </g>
+  <path d="M215 292V188h42c28 0 48 17 48 43 0 27-20 44-49 44h-15v17h-26zm26-40h14c15 0 24-7 24-20 0-12-9-19-24-19h-14v39z" fill="#ffffff"/>
+</svg>

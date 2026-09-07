@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
+  <title id="title">Pit Crew workflow</title>
+  <desc id="desc">Crew Chief decides, Luna builds, Sol inspects, local fixes return to Luna, and design questions escalate to the Crew Chief.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0l10 5-10 5z" fill="#ff6b47"/>
+    </marker>
+    <marker id="arrowSoft" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0 0l10 5-10 5z" fill="#8b949e"/>
+    </marker>
+  </defs>
+  <rect width="1200" height="420" rx="30" fill="#0d1117"/>
+  <text x="60" y="66" fill="#f0f6fc" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="24" font-weight="700">ONE PIT STOP. THREE JOBS.</text>
+  <text x="60" y="96" fill="#8b949e" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="16">Architecture stays upstairs. Implementation and local correction stay in the bay.</text>
+
+  <g font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif">
+    <rect x="70" y="150" width="270" height="150" rx="20" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <circle cx="110" cy="190" r="11" fill="#ff6b47"/>
+    <text x="135" y="198" fill="#f0f6fc" font-size="25" font-weight="700">Crew Chief</text>
+    <text x="110" y="232" fill="#8b949e" font-size="16">Astra / main thread</text>
+    <text x="110" y="263" fill="#c9d1d9" font-size="15">decide architecture</text>
+    <text x="110" y="286" fill="#c9d1d9" font-size="15">set scope + final approval</text>
+
+    <rect x="465" y="150" width="270" height="150" rx="20" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <circle cx="505" cy="190" r="11" fill="#ff6b47"/>
+    <text x="530" y="198" fill="#f0f6fc" font-size="25" font-weight="700">Mechanic</text>
+    <text x="505" y="232" fill="#8b949e" font-size="16">Luna</text>
+    <text x="505" y="263" fill="#c9d1d9" font-size="15">implement the packet</text>
+    <text x="505" y="286" fill="#c9d1d9" font-size="15">build / test / bounded fixes</text>
+
+    <rect x="860" y="150" width="270" height="150" rx="20" fill="#161b22" stroke="#30363d" stroke-width="2"/>
+    <circle cx="900" cy="190" r="11" fill="#ff6b47"/>
+    <text x="925" y="198" fill="#f0f6fc" font-size="25" font-weight="700">Inspector</text>
+    <text x="900" y="232" fill="#8b949e" font-size="16">Sol</text>
+    <text x="900" y="263" fill="#c9d1d9" font-size="15">review the diff</text>
+    <text x="900" y="286" fill="#c9d1d9" font-size="15">PASS / LOCAL_FIX / ESCALATE</text>
+  </g>
+
+  <path d="M340 225H455" fill="none" stroke="#ff6b47" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M735 225H850" fill="none" stroke="#ff6b47" stroke-width="4" marker-end="url(#arrow)"/>
+  <path d="M995 305v55H600v-50" fill="none" stroke="#8b949e" stroke-width="3" stroke-dasharray="9 9" marker-end="url(#arrowSoft)"/>
+  <text x="755" y="353" fill="#8b949e" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="14">LOCAL_FIX</text>
+  <path d="M1030 145V120H205v25" fill="none" stroke="#ff6b47" stroke-width="3" stroke-dasharray="9 9" marker-end="url(#arrow)"/>
+  <text x="560" y="116" fill="#ff8a6d" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="14">ESCALATE: design decision required</text>
+</svg>
