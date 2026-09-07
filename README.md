@@ -45,13 +45,25 @@ Pit Crew v1 intentionally does not use Sol as a mandatory pre-implementation cod
 
 ## Install
 
-Add this repository as a Codex plugin marketplace, then install the `pitcrew` plugin from the marketplace.
+Register this repository as a Codex plugin marketplace:
 
 ```bash
-codex plugin marketplace add groun519/pitcrew
+codex plugin marketplace add groun519/pitcrew --ref main
 ```
 
-Then open `/plugins`, select the Pit Crew marketplace, and install `pitcrew`.
+Then install Pit Crew:
+
+```bash
+codex plugin add pitcrew@pitcrew
+```
+
+Verify the installation:
+
+```bash
+codex plugin list
+```
+
+You can also open the Codex plugin browser and install `pitcrew` from the `Pit Crew` marketplace after registering it.
 
 ## Use
 

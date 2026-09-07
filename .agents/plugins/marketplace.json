@@ -6,11 +6,18 @@
   "plugins": [
     {
       "name": "pitcrew",
-      "description": "Crew Chief decides. Luna builds. Sol inspects.",
       "source": {
         "source": "local",
-        "path": "./"
-      }
+        "path": "./plugins/pitcrew"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL",
+        "products": [
+          "CODEX"
+        ]
+      },
+      "category": "Developer Tools"
     }
   ]
 }

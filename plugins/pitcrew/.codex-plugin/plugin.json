@@ -24,7 +24,9 @@
     "developerName": "groun519",
     "category": "Developer Tools",
     "capabilities": [
-      "Instructions"
+      "Interactive",
+      "Read",
+      "Write"
     ],
     "websiteURL": "https://github.com/groun519/pitcrew",
     "defaultPrompt": [
