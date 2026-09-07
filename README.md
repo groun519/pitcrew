@@ -1,3 +1,10 @@
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="assets/logo-dark.svg">
+    <img src="assets/logo.svg" width="220" alt="Pit Crew logo">
+  </picture>
+</p>
+
 <h1 align="center">Pit Crew</h1>
 
 <p align="center">
@@ -12,27 +19,46 @@
 </p>
 
 <p align="center">
-  <strong>Astra calls the strategy. Luna turns the wrench. Sol checks the work.</strong>
+  <strong>The Crew Chief makes the call. The Mechanic gets under the hood. The Inspector sends it back only when something is actually wrong.</strong>
 </p>
-
-Pit Crew is a bounded multi-model development workflow for Codex.
-
-The main model keeps the work that actually needs high-level judgment: understanding the request, choosing the architecture, setting the implementation contract, and giving final approval. Luna handles implementation. Sol inspects Luna's diff and sends back only local, unambiguous corrections. Anything that changes the design goes straight back to the Crew Chief.
-
-No speculative routing system. No mandatory pre-search pass. No fake token-savings claim. V1 only keeps the split that has a clear job.
 
 ---
 
-## Why Pit Crew?
+Give one strong model a coding task and it can do everything: understand the request, choose the architecture, write the code, inspect its own diff, patch small mistakes, inspect again, and keep going until the job is clean.
 
-A strong main model can design, implement, review, patch, review again, and eventually finish the task by itself.
+Pit Crew gives that model a crew instead.
 
-It can also spend expensive turns doing work that does not need to be expensive.
+The main thread keeps the work that deserves high-level judgment. Luna implements a bounded packet. Sol inspects the resulting diff and only sends back corrections that have one obvious answer. Anything that changes the design goes straight back upstairs.
 
-### Without Pit Crew
+<p align="center">
+  <img src="assets/workflow.svg" width="1000" alt="Pit Crew workflow">
+</p>
+
+## The rule
+
+> **Do not spend Crew Chief judgment on Mechanic work. Do not let the Mechanic or Inspector redesign the car.**
+
+Pit Crew v1 is deliberately small. It does not claim to minimize every token, and it does not add speculative routing machinery just because it might help later.
+
+The split is simple:
+
+| Role | Preferred model | Owns | Must not own |
+|---|---|---|---|
+| **Crew Chief** | Main thread, designed for Astra-class reasoning | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Repetitive low-level correction loops |
+| **Mechanic** | Luna when explicit routing is available | Editing, implementation, build/test, bounded fixes | Architecture redesign, scope expansion |
+| **Inspector** | Sol when explicit routing is available | Diff review, contract compliance, clear local corrections | New architecture, new abstractions, ambiguous design choices |
+
+The Crew Chief can always reject an Inspector `PASS`.
+
+## Before / after
+
+### One model doing the whole stop
 
 ```text
 Main model
+    |
+    v
+Design
     |
     v
 Implement
@@ -45,59 +71,40 @@ Patch
     |
     v
 Self-review again
-    |
-    v
-Patch again
 ```
 
-### With Pit Crew
+### Pit Crew
 
 ```text
-                  Crew Chief
-             architecture / scope
-                       |
-                       v
-                Mechanic (Luna)
-                  implementation
-                       |
-                       v
-                Inspector (Sol)
-                 /           \
-          LOCAL_FIX         ESCALATE
-             |                  |
-             v                  v
-       Mechanic (Luna)      Crew Chief
-             |                  |
-             +------->----------+
-                       |
-                     PASS
-                       |
-                       v
-                  Crew Chief
-                   final review
+Crew Chief
+    |
+    v
+Mechanic (Luna)
+    |
+    v
+Inspector (Sol)
+   /            \
+LOCAL_FIX     ESCALATE
+   |              |
+   v              v
+Mechanic       Crew Chief
+   |              |
+   +------>-------+
+          |
+         PASS
+          |
+          v
+      Crew Chief
+     final review
 ```
 
-The point is not to minimize every token. The point is to keep high-level judgment out of low-level correction loops whenever the correction has one obvious answer.
-
----
-
-## The crew
-
-| Role | Model | Owns | Must not own |
-|---|---|---|---|
-| **Crew Chief** | Main thread, designed for Astra-class reasoning | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Repetitive low-level correction loops |
-| **Mechanic** | Luna when explicit routing is available | Editing, implementation, build/test, bounded fixes | Architecture redesign, scope expansion |
-| **Inspector** | Sol when explicit routing is available | Diff review, contract compliance, clear local corrections | New architecture, new abstractions, ambiguous design choices |
-
-The Crew Chief can always reject an Inspector `PASS`.
-
----
+The intended saving is not "make every model read less." V1 targets a clearer problem: keep the expensive main thread out of repetitive, low-level correction loops when the fix is already unambiguous.
 
 ## How it works
 
 ### 1. Crew Chief sets the contract
 
-The main thread reads the request or mockup, understands enough of the codebase to make the design decision, and produces a bounded implementation packet.
+The main thread reads the request or mockup, inspects enough existing code to make the architecture decision, and produces a bounded implementation packet.
 
 ```text
 IMPLEMENTATION PACKET
@@ -113,9 +120,9 @@ validation:
 - <build/tests/manual checks expected>
 ```
 
-### 2. Luna builds
+### 2. Mechanic builds
 
-The Mechanic implements only that packet, validates what it can, and reports what changed.
+Luna implements only the packet, validates what it can, and reports the concrete result.
 
 ```text
 MECHANIC REPORT
@@ -127,15 +134,17 @@ uncertainty:
 - <none or concrete unresolved point>
 ```
 
-### 3. Sol inspects
+### 3. Inspector checks the work
 
-The Inspector reviews the working-tree diff and only the surrounding code necessary to verify it.
+Sol reviews the implementation contract, the current diff, and only the surrounding code needed to verify concrete findings.
 
-It returns one verdict class:
+It returns exactly one verdict class:
 
 ```text
 PASS
 ```
+
+or
 
 ```text
 LOCAL_FIX
@@ -144,74 +153,63 @@ LOCAL_FIX
   correction: <bounded required correction>
 ```
 
+or
+
 ```text
 ESCALATE
 - location: <file/symbol or contract section>
   reason: <why a design/scope decision is required>
-  decision_needed: <smallest question the Crew Chief must answer>
+  decision_needed: <the smallest question the Crew Chief must answer>
 ```
 
-### 4. Local fixes stay local
+### 4. Local problems stay in the bay
 
-`LOCAL_FIX` goes back to Luna, then Sol checks the resulting diff again.
+`LOCAL_FIX` goes back to Luna. Luna changes only that bounded issue, then Sol checks the current diff again.
 
-If fixing the problem would change responsibility, public API, scope, requirements, or architecture, the loop stops and returns to the Crew Chief.
+A local fix is appropriate when there is one clear answer inside the existing contract, such as:
 
-### 5. Crew Chief signs off
-
-Only after Sol returns `PASS`, the main thread performs the final architecture and user-intent review.
-
----
-
-## The guardrail
-
-Sol is allowed to say:
-
-> The implementation does not match the agreed design. Fix this exact part.
-
-Sol is not allowed to say:
-
-> I prefer a different design. Add another layer and move this responsibility.
-
-### `LOCAL_FIX`
-
-Use it when there is one clear answer inside the existing contract:
-
-- required behavior was plainly omitted
+- an obvious requirement was omitted
 - compile or syntax failure
-- clear local logic error
-- unnecessary out-of-scope edit that can simply be reverted
+- a clear local logic error
+- a needless out-of-scope edit that can simply be reverted
 - dead code introduced by the patch
-- duplicate implementation where an approved existing API already does the job
-- local naming or consistency mistake with one established convention
+- duplicate logic where the approved existing API already covers the job
+- a local naming or consistency error with one established project convention
 
-### `ESCALATE`
+### 5. Design problems go upstairs
 
-Return to the Crew Chief when resolution requires:
+Sol must return `ESCALATE` when the resolution would require any of the following:
 
 - moving responsibility between classes or systems
 - adding, removing, or materially changing a public API
 - introducing a new object, abstraction, layer, or dependency
-- expanding implementation scope
+- expanding the implementation scope
 - changing the mockup, requirement, or acceptance criteria
 - choosing between multiple reasonable designs
-- contradicting an earlier Crew Chief decision
+- contradicting a Crew Chief decision
 
----
+### 6. Crew Chief closes the stop
+
+Only after the Inspector returns `PASS`, the main thread performs the final architecture and intent review.
+
+That review asks different questions from Sol:
+
+- does the result actually satisfy the user's intent?
+- does responsibility live in the right place?
+- did the implementation preserve the intended architecture?
+- did the local-fix loop distort or narrow the original requirement?
+- is any architecture-level change unnecessary?
 
 ## Install
 
 ### Codex app
 
-Open the plugin marketplace screen and add this repository as a marketplace.
-
-```text
-Source: groun519/pitcrew
-Git ref: main
-Sparse path: <leave empty>
-```
-
-Then install **Pit Crew** from the newly added marketplace.
+1. Open **Plugins**.
+2. Add a GitHub marketplace.
+3. Use `groun519/pitcrew` as the source.
+4. Use `main` as the Git ref.
+5. Leave the sparse path empty.
+6. Open the imported **Pit Crew** marketplace and install `pitcrew`.
 
 ### Codex CLI
 
@@ -221,95 +219,82 @@ codex plugin add pitcrew@pitcrew
 codex plugin list
 ```
 
----
-
 ## Use
 
-For a normal implementation task:
+Ask Codex to use Pit Crew for an implementation or refactor task.
 
 ```text
 Use Pit Crew for this task.
 ```
 
-Or make the workflow explicit:
+Or make the intended route explicit:
 
 ```text
 Use Pit Crew to implement this mockup.
 Keep architecture and final approval in the main thread.
 Have Luna implement, Sol inspect and request only local corrections,
-then do the final review in the main thread.
+then perform the final review in the main thread.
 ```
 
-Pit Crew is intentionally aimed at implementation/refactoring work. It should not activate for simple questions, prose-only work, or tasks where you explicitly want a single-agent workflow.
+## V1 is intentionally missing things
 
----
+Pit Crew v1 does **not** include:
 
-## V1 scope
-
-Pit Crew v1 deliberately does **not** include:
-
-- mandatory Sol repository search before implementation
-- context-pack or read-range optimization
+- mandatory Sol pre-implementation repository search
+- context-pack or read-compression systems
 - MCP servers
 - lifecycle hooks
 - automatic reasoning-effort routing
-- automatic cost-based model routing
 - a general-purpose multi-agent framework
+- benchmark claims that have not been measured
 
-Those are candidates only if real usage shows a clear benefit.
+These are candidates, not promises. They should be added only when real usage demonstrates a clear benefit.
 
-### Runtime routing
+## What we are measuring next
 
-Pit Crew requests Luna for Mechanic work and Sol for Inspector work when the Codex runtime exposes explicit model routing.
+Before putting numbers in the hero section, Pit Crew should earn them.
 
-If a client cannot select those models, Pit Crew preserves the role contracts but must not pretend a specific model was used when it was not.
+The first real-world tests should track:
 
----
+- Crew Chief calls per task
+- Sol <-> Luna correction loops
+- issues still found by the Crew Chief after Sol `PASS`
+- unnecessary or incorrect Inspector corrections
+- per-model usage
+- total turns to a clean result
 
-## Roadmap
-
-- [x] Codex plugin marketplace packaging
-- [x] Crew Chief implementation contract
-- [x] Luna Mechanic role
-- [x] Sol Inspector role
-- [x] `PASS / LOCAL_FIX / ESCALATE` review contract
-- [x] Luna <-> Sol local correction loop
-- [x] Crew Chief final approval
-- [ ] Validate explicit Luna/Sol routing in real Codex work
-- [ ] Measure real usage, correction loops, and Astra final-review misses
-- [ ] Add optimizations only where measurements justify them
-
----
+If the data later shows a reliable cost, token, or latency improvement, the README can say exactly how much. Until then, it will not pretend.
 
 ## Repository layout
 
 ```text
 pitcrew/
-├── .agents/
-│   └── plugins/
-│       └── marketplace.json
-├── plugins/
-│   └── pitcrew/
-│       ├── .codex-plugin/
-│       │   └── plugin.json
-│       └── skills/
-│           └── pitcrew/
-│               └── SKILL.md
-├── LICENSE
-└── README.md
+|-- .agents/
+|   `-- plugins/
+|       `-- marketplace.json
+|-- assets/
+|   |-- logo.svg
+|   |-- logo-dark.svg
+|   |-- workflow.svg
+|   `-- social-preview.svg
+|-- plugins/
+|   `-- pitcrew/
+|       |-- .codex-plugin/
+|       |   `-- plugin.json
+|       `-- skills/
+|           `-- pitcrew/
+|               `-- SKILL.md
+|-- LICENSE
+`-- README.md
 ```
-
-The repository is both the GitHub marketplace and the source of the Pit Crew plugin.
-
----
 
 ## Why the name?
 
-A racing pit crew works because every specialist has a narrow responsibility and the car does not wait for one person to do everything.
+A pit crew works because specialists do not all grab the same wrench.
 
-Pit Crew applies the same idea to coding agents:
+One person makes the call. One does the work. One checks whether the car is ready to leave.
 
-**decide well, build fast, inspect before release.**
+That is the whole idea.
 
 ## License
 
