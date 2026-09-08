@@ -13,7 +13,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Codex-plugin-111111?style=flat-square" alt="Codex plugin">
-  <img src="https://img.shields.io/badge/version-0.1.2-111111?style=flat-square" alt="Version 0.1.2">
+  <img src="https://img.shields.io/badge/version-0.1.3-111111?style=flat-square" alt="Version 0.1.3">
   <img src="https://img.shields.io/badge/status-v1%20experimental-111111?style=flat-square" alt="V1 experimental">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
@@ -125,27 +125,35 @@ A Mechanic mistake, failed patch, build error, local implementation defect, wait
 
 Pit Crew treats idle orchestration as part of the harness, not as useful reasoning work.
 
-A worker that has not produced a new state is not automatically stuck. A wait timeout is not automatically a failure. If the runtime can wake on completion or meaningful state change, Pit Crew prefers that behavior. If polling is the only available mechanism, it should use the longest practical wait the runtime supports instead of repeatedly waking a large model at short intervals.
+A worker that has not produced a new state is not automatically stuck. A wait timeout is not automatically a failure. If the runtime can wake on completion or meaningful state change, Pit Crew prefers that behavior.
+
+Pit Crew v0.1.3 also makes the wait concrete. When Codex exposes a `wait_agent` timeout parameter, a healthy worker wait should explicitly request:
+
+```text
+wait_agent timeout_ms = 1200000
+```
+
+That is a **20-minute maximum wait**. Current Codex wait implementations can return earlier when completion or relevant activity arrives, so a worker that finishes after three minutes does not need to sit idle for twenty.
 
 ```text
 BAD
-Crew Chief -> wait -> no change
-Crew Chief -> wait -> no change
-Crew Chief -> wait -> no change
+Crew Chief -> short wait -> no change
+Crew Chief -> short wait -> no change
+Crew Chief -> short wait -> no change
 
 BETTER
 Crew Chief -> contract
             [execution continues]
-            [harness waits]
+            [one long wait]
             PASS / ESCALATE
 Crew Chief -> decision
 ```
 
-Pit Crew does **not** hardcode a universal polling interval. Runtime wait semantics and completion notification can change. The rule is behavioral: **do not spend model turns on unchanged liveness state when the runtime can avoid it.**
+The 20-minute value is an **experimental Pit Crew tuning value, not a universal law**. It is deliberately long enough to cover ordinary implementation runs without repeatedly waking a large parent context, but it should be changed if measurements or Codex wait semantics justify a better value.
 
-This rule also applies inside the execution cell. Sol should supervise meaningful Luna states, not burn turns merely asking whether Luna is still running.
+This rule also applies inside the execution cell. Sol should supervise meaningful Luna states, not burn turns merely asking whether Luna is still running. If Sol itself must wait through a supported `wait_agent` surface, it uses the same explicit long wait.
 
-V0.1.2 expresses this as workflow guidance. It does not modify Codex's internal scheduler or turn `wait_agent` into an event-driven primitive by itself.
+V0.1.3 expresses this through workflow instructions. It does not modify Codex's internal scheduler, guarantee that every client exposes the same wait surface, or turn `wait_agent` into a different runtime primitive.
 
 ## How it works
 
@@ -174,6 +182,8 @@ The packet goes to Luna for implementation and Sol becomes the execution supervi
 The exact runtime messaging topology may vary. The invariant is more important: routine implementation success, failure, and correction stay inside the Luna/Sol cell until `PASS` or a real `ESCALATE`.
 
 If the main thread must relay subagent messages because the runtime does not support direct subagent communication, it should relay actual new state without doing its own intermediate implementation review. It should not create extra reasoning turns merely to check liveness.
+
+When the runtime exposes `wait_agent(timeout_ms=...)`, Pit Crew asks for `timeout_ms=1200000` while waiting on a healthy subagent instead of relying on a short default wait.
 
 ### 3. Mechanic attempts the work
 
@@ -315,7 +325,7 @@ Or make the intended route explicit:
 Use Pit Crew to implement this mockup.
 Keep architecture and final approval in the main thread.
 Have Sol supervise Luna's implementation and local correction loop.
-Avoid short-interval busy polling while workers are healthy.
+Use the Pit Crew long wait when wait_agent supports timeout_ms.
 Only return to the main thread for a real escalation or after Sol PASS.
 ```
 
@@ -343,6 +353,7 @@ The first real-world tests should track:
 - Crew Chief substantive touch points per task
 - unwanted Crew Chief intermediate implementation reviews
 - no-state Crew Chief wake-ups or polling turns
+- `wait_agent` timeouts during healthy execution
 - Sol <-> Luna correction loops
 - no-state Inspector wake-ups or polling turns
 - issues still found by the Crew Chief after Sol `PASS`
@@ -350,7 +361,9 @@ The first real-world tests should track:
 - per-model usage
 - total turns to a clean result
 
-The desired execution property is simple: routine Luna failures should increase the Luna/Sol loop count, not the number of Astra implementation reviews, and healthy worker silence should not create repeated reasoning turns.
+The immediate v0.1.3 experiment is simple: a normal task that finishes inside the long wait should produce completion activity before the timeout instead of a chain of short no-state Crew Chief wake-ups.
+
+The broader desired execution property remains the same: routine Luna failures should increase the Luna/Sol loop count, not the number of Astra implementation reviews, and healthy worker silence should not create repeated reasoning turns.
 
 If the data later shows a reliable cost, token, or latency improvement, the README can say exactly how much. Until then, it will not pretend.
 
