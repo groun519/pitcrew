@@ -31,6 +31,8 @@ Crew Chief
 
 The Crew Chief should normally see the implementation only twice: once when establishing the contract and once after Inspector `PASS` for final review.
 
+While the execution cell is healthy, the Crew Chief should also stay dormant. Do not wake a large parent context merely to ask whether a worker is still running.
+
 Do not add speculative cost optimizations. In v1:
 
 - do not require Sol repository search before the contract exists
@@ -39,6 +41,7 @@ Do not add speculative cost optimizations. In v1:
 - do not add lifecycle hooks
 - do not invent automatic reasoning-effort routing
 - do not turn the workflow into a general multi-agent framework
+- do not hardcode a polling interval that assumes one runtime's wait semantics
 
 ## Roles
 
@@ -62,8 +65,9 @@ Unless the Inspector returns `ESCALATE`, the Crew Chief should not:
 - diagnose build, patch, staging, syntax, or local logic failures
 - issue implementation corrections directly to the Mechanic
 - repeatedly re-read the same implementation state between Mechanic attempts
+- repeatedly poll worker liveness at short intervals when no meaningful state has changed
 
-If the runtime requires the main thread to relay messages between subagents, relay the packets mechanically. Do not turn that routing step into a substantive implementation review.
+If the runtime requires the main thread to relay messages between subagents, relay packets only when there is a meaningful state transition to relay. Do not turn a timer wake-up, empty wait result, or liveness check into a substantive parent-model turn.
 
 The Crew Chief must not outsource a real design decision merely to save tokens.
 
@@ -117,6 +121,7 @@ The Inspector must not:
 - redesign architecture
 - expand scope
 - choose between multiple reasonable product or architecture decisions
+- repeatedly wake just to ask whether the Mechanic is still running when no new execution state exists
 
 Review and supervise in this order:
 
@@ -184,7 +189,24 @@ Escalate instead of locally fixing when resolution would require any of the foll
 - contradicting a Crew Chief decision
 - resolving a mismatch between the contract and the real codebase where intent is unclear
 
-A Mechanic failure by itself is not an escalation. Escalate only when the missing decision actually belongs to the Crew Chief.
+A Mechanic failure by itself is not an escalation. A wait timeout or lack of new worker output is not an escalation either. Escalate only when the missing decision actually belongs to the Crew Chief.
+
+## Waiting and wake-up policy
+
+Idle orchestration should not consume reasoning turns when the runtime can avoid it.
+
+Use these rules while waiting for a Mechanic or Inspector:
+
+- Prefer event-driven, completion-driven, or meaningful-state-change wake-up when the runtime exposes it.
+- Worker silence means only that no new state is available. It does not mean failure.
+- A wait timeout means only that the wait returned without completion. It is not evidence that the worker is stuck, wrong, or should be replaced.
+- Do not interrupt, duplicate, restart, or replace a healthy worker merely because a short wait expired.
+- If polling is the only available mechanism, prefer the longest practical wait supported by the runtime instead of repeated short-interval polling.
+- Do not invent a universal wait duration. Runtime wait semantics, completion notification, and cache behavior can change.
+- Wake the Crew Chief substantively only for `PASS`, `ESCALATE`, a meaningful execution-state change that actually needs Crew Chief action, a user interruption, or a runtime failure that requires a decision.
+- The same principle applies inside the execution cell: the Inspector should supervise meaningful Mechanic states, not spend repeated reasoning turns checking liveness.
+
+If the runtime itself wakes the main thread periodically and that behavior cannot be disabled, keep those wake-ups mechanical: wait or relay only. Do not inspect repository state or reconsider the implementation unless new evidence actually requires it.
 
 ## Workflow
 
@@ -223,6 +245,8 @@ Do not set reasoning effort in v1 unless the user explicitly requested one; effo
 
 The important rule is not which subagent physically starts first. The important rule is that routine implementation success, failure, and correction stay inside the Mechanic/Inspector cell until `PASS` or a real `ESCALATE`.
 
+After delegation, do not keep the Crew Chief active merely to monitor liveness. Wait for meaningful state according to the waiting and wake-up policy above.
+
 ### 3. Mechanic: attempt the work
 
 The Mechanic implements or performs the bounded task and returns a `MECHANIC REPORT`.
@@ -242,6 +266,8 @@ The Inspector returns `PASS`, `LOCAL_FIX`, or `ESCALATE`.
 
 If explicit model routing is available, request `gpt-5.6-sol`. Prefer a fresh or minimally forked Inspector context with only the evidence needed to supervise the current execution state.
 
+Do not ask the Inspector to wake repeatedly between meaningful Mechanic states. Let the execution wait without inference when the runtime supports that behavior.
+
 ### 5. Local correction loop
 
 If the Inspector returns `LOCAL_FIX`, route only that fix packet back to the Mechanic.
@@ -258,7 +284,7 @@ LOCAL_FIX -> Mechanic
 PASS
 ```
 
-The Crew Chief stays out of this loop.
+The Crew Chief stays out of this loop and should remain dormant while the loop is healthy.
 
 Do not loop mechanically forever. If the same issue recurs, the Inspector should diagnose whether a different bounded implementation method can solve it. If the remaining problem actually requires a design, contract, or scope decision, return `ESCALATE`.
 
@@ -268,7 +294,7 @@ Only `ESCALATE` returns substantive control to the Crew Chief during execution.
 
 The Crew Chief reads only the minimum original code and evidence needed to make the missing decision, updates the contract, and returns the task to the execution cell.
 
-Do not use escalation merely because the Mechanic made a mistake, a command failed, or a local correction needs another attempt.
+Do not use escalation merely because the Mechanic made a mistake, a command failed, a wait timed out, a worker has been quiet, or a local correction needs another attempt.
 
 ### 7. Crew Chief final review
 
@@ -301,16 +327,17 @@ Do not expose internal chain-of-thought. Do not claim a specific subagent model 
 
 ## Runtime fallback
 
-Codex subagent and model-selection surfaces can differ by client/runtime.
+Codex subagent, wait, and model-selection surfaces can differ by client/runtime.
 
 If explicit Luna/Sol selection is unavailable:
 
 1. preserve the Mechanic and Inspector role contracts
 2. use available subagents only if delegation itself is supported
 3. preserve the rule that the Crew Chief does not perform routine intermediate implementation review
-4. state the routing limitation in the final report
-5. never pretend a generic or inherited subagent was Luna or Sol
+4. preserve the no-busy-polling rule as far as the runtime allows
+5. state the routing limitation in the final report
+6. never pretend a generic or inherited subagent was Luna or Sol
 
-If the runtime cannot let subagents communicate directly but can invoke them separately, the main thread may relay the Mechanic report and Inspector verdict without independently reviewing the implementation state.
+If the runtime cannot let subagents communicate directly but can invoke them separately, the main thread may relay the Mechanic report and Inspector verdict without independently reviewing the implementation state. Relay on actual new state rather than repeatedly polling for it when possible.
 
 If subagents are unavailable entirely, do not simulate multiple agents in prose. Continue as a normal single-agent implementation and say Pit Crew delegation was unavailable in that runtime.
