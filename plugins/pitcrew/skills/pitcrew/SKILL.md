@@ -41,7 +41,7 @@ Do not add speculative cost optimizations. In v1:
 - do not add lifecycle hooks
 - do not invent automatic reasoning-effort routing
 - do not turn the workflow into a general multi-agent framework
-- do not hardcode a polling interval that assumes one runtime's wait semantics
+- do not add extra polling machinery beyond the runtime's wait primitive
 
 ## Roles
 
@@ -195,16 +195,27 @@ A Mechanic failure by itself is not an escalation. A wait timeout or lack of new
 
 Idle orchestration should not consume reasoning turns when the runtime can avoid it.
 
+Pit Crew v0.1.3 uses one explicit experimental wait value for healthy Codex subagent waits:
+
+```text
+wait_agent timeout_ms = 1200000
+```
+
+That is 20 minutes. When `wait_agent` exposes `timeout_ms`, pass `1200000` explicitly instead of omitting the argument and falling back to a short runtime default. On current Codex wait implementations, completion or relevant activity can return before the timeout, so this value is a maximum wait rather than a forced 20-minute delay.
+
 Use these rules while waiting for a Mechanic or Inspector:
 
 - Prefer event-driven, completion-driven, or meaningful-state-change wake-up when the runtime exposes it.
+- When `wait_agent` supports `timeout_ms`, use `timeout_ms=1200000` for a healthy worker wait.
 - Worker silence means only that no new state is available. It does not mean failure.
 - A wait timeout means only that the wait returned without completion. It is not evidence that the worker is stuck, wrong, or should be replaced.
-- Do not interrupt, duplicate, restart, or replace a healthy worker merely because a short wait expired.
-- If polling is the only available mechanism, prefer the longest practical wait supported by the runtime instead of repeated short-interval polling.
-- Do not invent a universal wait duration. Runtime wait semantics, completion notification, and cache behavior can change.
+- Do not interrupt, duplicate, restart, or replace a healthy worker merely because a wait expired.
+- Do not repeat short waits when one supported long wait can cover the same healthy execution period.
+- Treat 20 minutes as a Pit Crew v0.1.3 tuning value, not a universal law. Revisit it when measurements or runtime semantics justify a change.
 - Wake the Crew Chief substantively only for `PASS`, `ESCALATE`, a meaningful execution-state change that actually needs Crew Chief action, a user interruption, or a runtime failure that requires a decision.
 - The same principle applies inside the execution cell: the Inspector should supervise meaningful Mechanic states, not spend repeated reasoning turns checking liveness.
+
+If the runtime does not expose `timeout_ms`, rejects the requested value, or has materially different wait semantics, use the longest practical supported wait and preserve the no-busy-polling rule.
 
 If the runtime itself wakes the main thread periodically and that behavior cannot be disabled, keep those wake-ups mechanical: wait or relay only. Do not inspect repository state or reconsider the implementation unless new evidence actually requires it.
 
@@ -245,7 +256,7 @@ Do not set reasoning effort in v1 unless the user explicitly requested one; effo
 
 The important rule is not which subagent physically starts first. The important rule is that routine implementation success, failure, and correction stay inside the Mechanic/Inspector cell until `PASS` or a real `ESCALATE`.
 
-After delegation, do not keep the Crew Chief active merely to monitor liveness. Wait for meaningful state according to the waiting and wake-up policy above.
+After delegation, do not keep the Crew Chief active merely to monitor liveness. When waiting through a Codex `wait_agent` surface that accepts `timeout_ms`, explicitly request `1200000` rather than relying on the short default.
 
 ### 3. Mechanic: attempt the work
 
@@ -266,7 +277,7 @@ The Inspector returns `PASS`, `LOCAL_FIX`, or `ESCALATE`.
 
 If explicit model routing is available, request `gpt-5.6-sol`. Prefer a fresh or minimally forked Inspector context with only the evidence needed to supervise the current execution state.
 
-Do not ask the Inspector to wake repeatedly between meaningful Mechanic states. Let the execution wait without inference when the runtime supports that behavior.
+Do not ask the Inspector to wake repeatedly between meaningful Mechanic states. If the Inspector must wait on a healthy Mechanic through `wait_agent` and `timeout_ms` is supported, use `1200000` there too.
 
 ### 5. Local correction loop
 
@@ -335,8 +346,9 @@ If explicit Luna/Sol selection is unavailable:
 2. use available subagents only if delegation itself is supported
 3. preserve the rule that the Crew Chief does not perform routine intermediate implementation review
 4. preserve the no-busy-polling rule as far as the runtime allows
-5. state the routing limitation in the final report
-6. never pretend a generic or inherited subagent was Luna or Sol
+5. when `wait_agent` supports `timeout_ms`, still request `1200000` for healthy waits
+6. state the routing limitation in the final report
+7. never pretend a generic or inherited subagent was Luna or Sol
 
 If the runtime cannot let subagents communicate directly but can invoke them separately, the main thread may relay the Mechanic report and Inspector verdict without independently reviewing the implementation state. Relay on actual new state rather than repeatedly polling for it when possible.
 
