@@ -1,6 +1,6 @@
 ---
 name: pitcrew
-description: Run the Pit Crew coding workflow. Use for implementation or refactoring tasks where the user wants high-quality main-thread decisions, bounded Luna implementation under Sol supervision, and final main-thread approval. Trigger when the user says Pit Crew, crew chief, Luna implement with Sol supervision, multi-model coding workflow, or asks to keep expensive main-model reasoning out of implementation and correction loops. Do not use for simple questions, prose-only tasks, or when the user explicitly asks for a single-agent workflow.
+description: Run the Pit Crew coding workflow. Use for implementation or refactoring tasks where the user wants high-quality main-thread decisions, bounded Luna implementation under Sol supervision, and final main-thread approval. Supports Quality and Balanced model profiles. Trigger when the user says Pit Crew, Pit Crew Quality, Pit Crew Balanced, crew chief, Luna implement with Sol supervision, multi-model coding workflow, or asks to keep expensive main-model reasoning out of implementation and correction loops. Do not use for simple questions, prose-only tasks, or when the user explicitly asks for a single-agent workflow.
 license: MIT
 ---
 
@@ -12,7 +12,7 @@ Run one bounded execution cell:
 Crew Chief -> [ Inspector <-> Mechanic ] -> Crew Chief
 ```
 
-The parent/main thread is the Crew Chief. Pit Crew v1 is designed for an Astra-class main thread, but never claim the active model is Astra unless the runtime actually identifies it that way.
+The parent/main thread is the Crew Chief. The selected Pit Crew profile defines the intended Crew Chief model/effort and the requested Inspector/Mechanic model/effort. Never claim that a requested model or effort is active unless the runtime actually identifies or confirms it.
 
 ## V1 purpose
 
@@ -33,13 +33,47 @@ The Crew Chief should normally see the implementation only twice: once when esta
 
 While the execution cell is healthy, the Crew Chief should also stay dormant. Do not wake a large parent context merely to ask whether a worker is still running.
 
+## Profiles
+
+Pit Crew v0.1.4 has two fixed profiles. Do not add an Economy profile and do not silently choose a profile from perceived task difficulty.
+
+| Profile | Crew Chief | Inspector | Mechanic |
+|---|---|---|---|
+| `Quality` | Astra / `high` | `gpt-5.6-sol` / `xhigh` | `gpt-5.6-luna` / `xhigh` |
+| `Balanced` | `gpt-5.6-sol` / `xhigh` | `gpt-5.6-sol` / `high` | `gpt-5.6-luna` / `high` |
+
+Profile intent:
+
+- `Quality` minimizes avoidable quality loss. Use the strongest Crew Chief route and give both execution roles generous reasoning budgets.
+- `Balanced` removes Astra from ordinary work while keeping Sol in every judgment/review role. Luna remains the bounded implementation role with a high reasoning budget.
+- Luna is deliberately not reduced to medium or low in either profile. A stronger first implementation can reduce Sol correction and re-review loops.
+- Models below Sol are not used for Crew Chief or Inspector judgment in these v1 profiles.
+
+Profile selection:
+
+- `Use Pit Crew Quality ...` selects `Quality`.
+- `Use Pit Crew Balanced ...` selects `Balanced`.
+- A plain `Use Pit Crew ...` selects `Quality` to preserve the original high-quality behavior.
+- Do not automatically downgrade from `Quality` to `Balanced` or upgrade from `Balanced` to `Quality` based on your own complexity estimate.
+
+The Crew Chief is the already-open main thread. Pit Crew does not silently replace that parent model or its effort setting.
+
+Before delegation:
+
+- For `Quality`, the user should start the task with Astra at `high` effort.
+- For `Balanced`, the user should start the task with Sol at `xhigh` effort.
+- If the runtime can identify the current main model/effort and it conflicts with the selected profile, do not claim the profile is active. Tell the user which main setting the profile expects before starting execution.
+- If the runtime cannot identify the current main model/effort, proceed with the requested profile but treat the Crew Chief route as unverified and report that limitation at the end.
+
+When explicit subagent model and effort routing is supported, request the Inspector and Mechanic model/effort exactly from the selected profile. If model selection is supported but effort selection is not, preserve the requested models, use the runtime's available effort behavior, and report the limitation rather than pretending the requested effort was applied.
+
 Do not add speculative cost optimizations. In v1:
 
 - do not require Sol repository search before the contract exists
 - do not build or require context packs
 - do not add MCP servers
 - do not add lifecycle hooks
-- do not invent automatic reasoning-effort routing
+- do not automatically select profiles from task complexity
 - do not turn the workflow into a general multi-agent framework
 - do not add extra polling machinery beyond the runtime's wait primitive
 
@@ -73,7 +107,7 @@ The Crew Chief must not outsource a real design decision merely to save tokens.
 
 ### Mechanic
 
-Prefer `gpt-5.6-luna` when the runtime supports explicit subagent model selection.
+Use the Mechanic model/effort from the selected profile when the runtime supports explicit routing.
 
 The Mechanic:
 
@@ -101,7 +135,7 @@ uncertainty:
 
 ### Inspector
 
-Prefer `gpt-5.6-sol` when the runtime supports explicit subagent model selection.
+Use the Inspector model/effort from the selected profile when the runtime supports explicit routing.
 
 The Inspector is the execution supervisor and quality gate for the Mechanic. It does not edit files itself, but it is not limited to passively reviewing a finished diff.
 
@@ -195,7 +229,7 @@ A Mechanic failure by itself is not an escalation. A wait timeout or lack of new
 
 Idle orchestration should not consume reasoning turns when the runtime can avoid it.
 
-Pit Crew v0.1.3 uses one explicit experimental wait value for healthy Codex subagent waits:
+Pit Crew uses one explicit experimental wait value for healthy Codex subagent waits:
 
 ```text
 wait_agent timeout_ms = 1200000
@@ -211,7 +245,7 @@ Use these rules while waiting for a Mechanic or Inspector:
 - A wait timeout means only that the wait returned without completion. It is not evidence that the worker is stuck, wrong, or should be replaced.
 - Do not interrupt, duplicate, restart, or replace a healthy worker merely because a wait expired.
 - Do not repeat short waits when one supported long wait can cover the same healthy execution period.
-- Treat 20 minutes as a Pit Crew v0.1.3 tuning value, not a universal law. Revisit it when measurements or runtime semantics justify a change.
+- Treat 20 minutes as an experimental Pit Crew tuning value, not a universal law. Revisit it when measurements or runtime semantics justify a change.
 - Wake the Crew Chief substantively only for `PASS`, `ESCALATE`, a meaningful execution-state change that actually needs Crew Chief action, a user interruption, or a runtime failure that requires a decision.
 - The same principle applies inside the execution cell: the Inspector should supervise meaningful Mechanic states, not spend repeated reasoning turns checking liveness.
 
@@ -223,12 +257,13 @@ If the runtime itself wakes the main thread periodically and that behavior canno
 
 ### 1. Crew Chief: establish the contract
 
-Read the user request, supplied mockup, and enough existing code to make the architecture decision.
+Resolve the profile first, verify the Crew Chief route when the runtime exposes it, then read the user request, supplied mockup, and enough existing code to make the architecture decision.
 
 Produce an internal bounded implementation packet. It should contain only what the execution cell needs:
 
 ```text
 IMPLEMENTATION PACKET
+profile: <Quality or Balanced>
 objective: <one clear objective>
 scope:
 - <files/systems/state allowed to change>
@@ -247,12 +282,19 @@ Do not send the full parent conversation unless the runtime makes that unavoidab
 
 Delegate the implementation packet to the Mechanic and establish the Inspector as the supervisor for that packet.
 
-If explicit model routing is available:
+When explicit model and effort routing is available, use the selected profile exactly:
 
-- request `gpt-5.6-luna` for the Mechanic
-- request `gpt-5.6-sol` for the Inspector
+```text
+QUALITY
+Crew Chief : Astra / high
+Inspector  : gpt-5.6-sol / xhigh
+Mechanic   : gpt-5.6-luna / xhigh
 
-Do not set reasoning effort in v1 unless the user explicitly requested one; effort tuning is intentionally deferred until usage data exists.
+BALANCED
+Crew Chief : gpt-5.6-sol / xhigh
+Inspector  : gpt-5.6-sol / high
+Mechanic   : gpt-5.6-luna / high
+```
 
 The important rule is not which subagent physically starts first. The important rule is that routine implementation success, failure, and correction stay inside the Mechanic/Inspector cell until `PASS` or a real `ESCALATE`.
 
@@ -268,6 +310,7 @@ Do not require the Mechanic to present a supposedly perfect result before the In
 
 Give the Inspector:
 
+- the selected profile
 - the implementation contract
 - the latest Mechanic report
 - access to the current diff, working tree, staged state, or validation output as relevant
@@ -275,7 +318,7 @@ Give the Inspector:
 
 The Inspector returns `PASS`, `LOCAL_FIX`, or `ESCALATE`.
 
-If explicit model routing is available, request `gpt-5.6-sol`. Prefer a fresh or minimally forked Inspector context with only the evidence needed to supervise the current execution state.
+Prefer a fresh or minimally forked Inspector context with only the evidence needed to supervise the current execution state.
 
 Do not ask the Inspector to wake repeatedly between meaningful Mechanic states. If the Inspector must wait on a healthy Mechanic through `wait_agent` and `timeout_ms` is supported, use `1200000` there too.
 
@@ -329,26 +372,29 @@ If the final review finds only a local implementation defect with one clear corr
 
 Report:
 
+- selected profile
 - what was implemented
 - what was validated
 - whether the Inspector returned `PASS`
-- any unresolved limitation or runtime routing limitation
+- whether the requested Crew Chief, Inspector, and Mechanic model/effort routes were confirmed or unverified
+- any unresolved runtime routing limitation
 
-Do not expose internal chain-of-thought. Do not claim a specific subagent model was used unless the runtime actually routed that model.
+Do not expose internal chain-of-thought. Do not claim a specific model or reasoning effort was used unless the runtime actually routed or identified it.
 
 ## Runtime fallback
 
-Codex subagent, wait, and model-selection surfaces can differ by client/runtime.
+Codex subagent, effort, wait, and model-selection surfaces can differ by client/runtime.
 
-If explicit Luna/Sol selection is unavailable:
+If explicit Luna/Sol selection or effort selection is unavailable:
 
-1. preserve the Mechanic and Inspector role contracts
+1. preserve the selected profile's role contracts
 2. use available subagents only if delegation itself is supported
-3. preserve the rule that the Crew Chief does not perform routine intermediate implementation review
-4. preserve the no-busy-polling rule as far as the runtime allows
-5. when `wait_agent` supports `timeout_ms`, still request `1200000` for healthy waits
-6. state the routing limitation in the final report
-7. never pretend a generic or inherited subagent was Luna or Sol
+3. request the selected profile's model and effort wherever the runtime exposes those controls
+4. preserve the rule that the Crew Chief does not perform routine intermediate implementation review
+5. preserve the no-busy-polling rule as far as the runtime allows
+6. when `wait_agent` supports `timeout_ms`, still request `1200000` for healthy waits
+7. state exactly which model/effort routes could not be verified or applied
+8. never pretend a generic or inherited subagent matched the requested profile
 
 If the runtime cannot let subagents communicate directly but can invoke them separately, the main thread may relay the Mechanic report and Inspector verdict without independently reviewing the implementation state. Relay on actual new state rather than repeatedly polling for it when possible.
 
