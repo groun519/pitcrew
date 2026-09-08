@@ -1,6 +1,6 @@
 {
   "name": "pitcrew",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "A multi-model development crew for Codex: Crew Chief decides, Luna builds, Sol supervises execution.",
   "author": {
     "name": "groun519",
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Pit Crew",
     "shortDescription": "Crew Chief decides. Luna builds. Sol supervises.",
-    "longDescription": "A bounded multi-model coding workflow for Codex. The main thread owns architecture and final approval, while Sol supervises Luna's implementation and local correction loop. Healthy execution stays inside the cell, and supported wait_agent calls use an explicit long wait to avoid repeated short-interval Crew Chief wake-ups.",
+    "longDescription": "A bounded multi-model coding workflow for Codex with Quality and Balanced profiles. The main thread owns architecture and final approval, Sol supervises Luna's implementation and local correction loop, and healthy execution uses an explicit long wait to avoid repeated short-interval Crew Chief wake-ups.",
     "developerName": "groun519",
     "category": "Developer Tools",
     "capabilities": [
@@ -30,8 +30,8 @@
     ],
     "websiteURL": "https://github.com/groun519/pitcrew",
     "defaultPrompt": [
-      "Use Pit Crew to implement this change.",
-      "Keep architecture and final approval in the main thread. Have Sol supervise Luna until the execution cell reaches PASS. When wait_agent supports timeout_ms, use Pit Crew's explicit long wait instead of the short default while workers are healthy. Return to the main thread only for a real escalation or final review."
+      "Use Pit Crew Quality to implement this change. Use Astra high as the main Crew Chief, Sol xhigh as Inspector, and Luna xhigh as Mechanic when the runtime supports those routes.",
+      "Use Pit Crew Balanced to implement this change. Use Sol xhigh as the main Crew Chief, Sol high as Inspector, and Luna high as Mechanic when the runtime supports those routes."
     ]
   }
 }
