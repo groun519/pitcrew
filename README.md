@@ -13,7 +13,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Codex-plugin-111111?style=flat-square" alt="Codex plugin">
-  <img src="https://img.shields.io/badge/version-0.1.0-111111?style=flat-square" alt="Version 0.1.0">
+  <img src="https://img.shields.io/badge/version-0.1.1-111111?style=flat-square" alt="Version 0.1.1">
   <img src="https://img.shields.io/badge/status-v1%20experimental-111111?style=flat-square" alt="V1 experimental">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
@@ -30,7 +30,7 @@
 </p>
 
 <p align="center">
-  <strong>The Crew Chief makes the call. The Mechanic gets under the hood. The Inspector sends it back only when something is actually wrong.</strong>
+  <strong>The Crew Chief makes the call. The Mechanic gets under the hood. The Inspector keeps the work in the bay until it is ready to go upstairs.</strong>
 </p>
 
 ---
@@ -41,7 +41,7 @@ Give one strong model a coding task and it can do everything: understand the req
 
 **Pit Crew gives that model a crew instead.**
 
-The main thread keeps the work that deserves high-level judgment. Luna implements a bounded packet. Sol inspects the resulting diff and only sends back corrections that have one obvious answer. Anything that changes the design goes straight back upstairs.
+The main thread keeps the work that deserves high-level judgment. Luna implements a bounded packet. Sol supervises Luna's implementation and local correction loop. Only a real design decision returns upstairs before the work is clean; otherwise Astra sees the result again after Sol says `PASS`.
 
 <p align="center">
   <img src="assets/workflow.svg" width="1000" alt="Pit Crew workflow">
@@ -57,9 +57,9 @@ The split is simple:
 
 | Role | Preferred model | Owns | Must not own |
 |---|---|---|---|
-| **Crew Chief** | Main thread, designed for Astra-class reasoning | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Repetitive low-level correction loops |
+| **Crew Chief** | Main thread, designed for Astra-class reasoning | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Routine intermediate implementation review |
 | **Mechanic** | Luna when explicit routing is available | Editing, implementation, build/test, bounded fixes | Architecture redesign, scope expansion |
-| **Inspector** | Sol when explicit routing is available | Diff review, contract compliance, clear local corrections | New architecture, new abstractions, ambiguous design choices |
+| **Inspector** | Sol when explicit routing is available | Execution supervision, contract compliance, local correction loop, final execution gate | Editing, new architecture, ambiguous design choices |
 
 The Crew Chief can always reject an Inspector `PASS`.
 
@@ -91,27 +91,34 @@ Self-review again
 ```text
 Crew Chief
     |
+    | contract
     v
-Mechanic (Luna)
-    |
-    v
-Inspector (Sol)
-   /            \
-LOCAL_FIX     ESCALATE
-   |              |
-   v              v
-Mechanic       Crew Chief
-   |              |
-   +------>-------+
-          |
-         PASS
-          |
-          v
-      Crew Chief
-     final review
++------------------------+
+|     Execution Cell     |
+|                        |
+|  Mechanic <-> Inspector|
+|   Luna          Sol    |
+|     fixes <-> review   |
+|                        |
++-----------+------------+
+            |
+       PASS | ESCALATE
+            v
+       Crew Chief
+      final review
 ```
 
-The intended saving is not "make every model read less." V1 targets a clearer problem: keep the expensive main thread out of repetitive, low-level correction loops when the fix is already unambiguous.
+The intended saving is not "make every model read less." V1 targets a clearer problem: keep the expensive main thread out of repetitive, low-level implementation supervision and correction loops.
+
+The normal Crew Chief touch points are intentionally narrow:
+
+```text
+1. Set contract
+2. Receive Inspector PASS
+3. Final architecture / intent review
+```
+
+A Mechanic mistake, failed patch, build error, or local implementation defect is not by itself a reason for the Crew Chief to inspect the diff.
 
 ## How it works
 
@@ -123,7 +130,7 @@ The main thread reads the request or mockup, inspects enough existing code to ma
 IMPLEMENTATION PACKET
 objective: <one clear objective>
 scope:
-- <files/systems allowed to change>
+- <files/systems/state allowed to change>
 contract:
 - <required behavior>
 - <behavior that must be preserved>
@@ -133,23 +140,35 @@ validation:
 - <build/tests/manual checks expected>
 ```
 
-### 2. Mechanic builds
+### 2. Start the execution cell
+
+The packet goes to Luna for implementation and Sol becomes the execution supervisor for that same contract.
+
+The exact runtime messaging topology may vary. The invariant is more important: routine implementation success, failure, and correction stay inside the Luna/Sol cell until `PASS` or a real `ESCALATE`.
+
+If the main thread must relay subagent messages because the runtime does not support direct subagent communication, it should relay them without doing its own intermediate implementation review.
+
+### 3. Mechanic attempts the work
 
 Luna implements only the packet, validates what it can, and reports the concrete result.
 
 ```text
 MECHANIC REPORT
 changed:
-- <files or symbols>
+- <files, symbols, repository state, or attempted operation>
 validated:
 - <build/tests/checks>
 uncertainty:
 - <none or concrete unresolved point>
 ```
 
-### 3. Inspector checks the work
+The report does not need to pretend the first attempt is perfect. Failed validation, a blocked repository operation, or an incomplete local result goes to Sol first, not back upstairs.
 
-Sol reviews the implementation contract, the current diff, and only the surrounding code needed to verify concrete findings.
+### 4. Inspector supervises and gates
+
+Sol reviews the contract and current execution state. It may inspect a finished diff, an incomplete attempt, staged state, build output, patch failure, or only the surrounding code needed to validate a concrete finding.
+
+Sol does not edit. But it may reason independently about the correct bounded result, diagnose why Luna's attempt failed, and tell Luna to use a different concrete method when there is one clear answer inside the approved contract.
 
 It returns exactly one verdict class:
 
@@ -161,7 +180,7 @@ or
 
 ```text
 LOCAL_FIX
-- location: <file/symbol>
+- location: <file/symbol/state/operation>
   problem: <concrete problem>
   correction: <bounded required correction>
 ```
@@ -170,38 +189,59 @@ or
 
 ```text
 ESCALATE
-- location: <file/symbol or contract section>
+- location: <file/symbol/state/contract section>
   reason: <why a design/scope decision is required>
   decision_needed: <the smallest question the Crew Chief must answer>
 ```
 
-### 4. Local problems stay in the bay
+### 5. Local problems stay in the bay
 
-`LOCAL_FIX` goes back to Luna. Luna changes only that bounded issue, then Sol checks the current diff again.
+`LOCAL_FIX` goes back to Luna. Luna changes only that bounded issue, then Sol checks the current state again.
+
+```text
+Luna attempt
+    |
+    v
+   Sol
+  /   \
+PASS  LOCAL_FIX
+        |
+        v
+      Luna
+        |
+        +------> Sol
+```
 
 A local fix is appropriate when there is one clear answer inside the existing contract, such as:
 
 - an obvious requirement was omitted
 - compile or syntax failure
+- a patch, staging, line-ending, or repository-state error with one clear correction
 - a clear local logic error
 - a needless out-of-scope edit that can simply be reverted
 - dead code introduced by the patch
 - duplicate logic where the approved existing API already covers the job
 - a local naming or consistency error with one established project convention
+- a clearly bounded deterministic method can replace an unproductive implementation attempt
 
-### 5. Design problems go upstairs
+### 6. Design problems go upstairs
 
-Sol must return `ESCALATE` when the resolution would require any of the following:
+Only a real `ESCALATE` should interrupt the execution cell.
+
+Sol must escalate when resolution would require any of the following:
 
 - moving responsibility between classes or systems
-- adding, removing, or materially changing a public API
+- adding, removing, or materially changing a public API beyond the approved contract
 - introducing a new object, abstraction, layer, or dependency
 - expanding the implementation scope
 - changing the mockup, requirement, or acceptance criteria
 - choosing between multiple reasonable designs
 - contradicting a Crew Chief decision
+- resolving a contract/codebase mismatch where intent is unclear
 
-### 6. Crew Chief closes the stop
+A Mechanic failure by itself is not an escalation.
+
+### 7. Crew Chief closes the stop
 
 Only after the Inspector returns `PASS`, the main thread performs the final architecture and intent review.
 
@@ -212,6 +252,8 @@ That review asks different questions from Sol:
 - did the implementation preserve the intended architecture?
 - did the local-fix loop distort or narrow the original requirement?
 - is any architecture-level change unnecessary?
+
+If the Crew Chief finds only a local implementation defect, it sends the result back into the Sol-led execution cell instead of correcting Luna directly. If the problem changes architecture or contract, the Crew Chief updates the contract first.
 
 ## Install
 
@@ -245,20 +287,20 @@ Or make the intended route explicit:
 ```text
 Use Pit Crew to implement this mockup.
 Keep architecture and final approval in the main thread.
-Have Luna implement, Sol inspect and request only local corrections,
-then perform the final review in the main thread.
+Have Sol supervise Luna's implementation and local correction loop.
+Only return to the main thread for a real escalation or after Sol PASS.
 ```
 
 ## V1 is intentionally missing things
 
 Pit Crew v1 does **not** include:
 
-- mandatory Sol pre-implementation repository search
+- mandatory Sol pre-contract repository search
 - context-pack or read-compression systems
 - MCP servers
 - lifecycle hooks
 - automatic reasoning-effort routing
-- a general-purpose multi-agent framework
+- a general-purpose dynamic multi-agent topology planner
 - benchmark claims that have not been measured
 
 These are candidates, not promises. They should be added only when real usage demonstrates a clear benefit.
@@ -269,12 +311,15 @@ Before putting numbers in the hero section, Pit Crew should earn them.
 
 The first real-world tests should track:
 
-- Crew Chief calls per task
+- Crew Chief substantive touch points per task
+- unwanted Crew Chief intermediate implementation reviews
 - Sol <-> Luna correction loops
 - issues still found by the Crew Chief after Sol `PASS`
 - unnecessary or incorrect Inspector corrections
 - per-model usage
 - total turns to a clean result
+
+The desired execution property is simple: routine Luna failures should increase the Luna/Sol loop count, not the number of Astra implementation reviews.
 
 If the data later shows a reliable cost, token, or latency improvement, the README can say exactly how much. Until then, it will not pretend.
 
