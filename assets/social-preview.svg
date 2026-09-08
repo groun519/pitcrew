@@ -60,7 +60,7 @@
     <rect width="125" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
     <text x="62.5" y="25" text-anchor="middle" fill="#dbe2eb">Codex plugin</text>
     <rect x="142" width="94" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
-    <text x="189" y="25" text-anchor="middle" fill="#dbe2eb">v0.1.2</text>
+    <text x="189" y="25" text-anchor="middle" fill="#dbe2eb">v0.1.3</text>
     <rect x="253" width="138" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
     <text x="322" y="25" text-anchor="middle" fill="#dbe2eb">experimental</text>
     <rect x="408" width="74" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
