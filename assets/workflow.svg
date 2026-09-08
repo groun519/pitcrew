@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="title desc">
   <title id="title">Pit Crew workflow</title>
-  <desc id="desc">Crew Chief sets the contract, Sol supervises Luna inside the execution cell, local fixes stay in the bay, and only PASS or a real escalation returns to the Crew Chief.</desc>
+  <desc id="desc">Crew Chief sets the contract, then stays dormant while Sol supervises Luna inside the execution cell. Local fixes stay in the bay, idle waits do not become reasoning turns when avoidable, and only PASS or a real escalation returns to the Crew Chief.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M0 0l10 5-10 5z" fill="#ff6b47"/>
@@ -11,7 +11,7 @@
   </defs>
   <rect width="1200" height="420" rx="30" fill="#0d1117"/>
   <text x="60" y="66" fill="#f0f6fc" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="24" font-weight="700">ONE PIT STOP. THREE JOBS.</text>
-  <text x="60" y="96" fill="#8b949e" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="16">Crew Chief sets the contract. Sol keeps Luna's execution loop in the bay until PASS.</text>
+  <text x="60" y="96" fill="#8b949e" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="16">Crew Chief sets the contract, then sleeps while the execution cell is healthy.</text>
 
   <g font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif">
     <rect x="65" y="150" width="265" height="150" rx="20" fill="#161b22" stroke="#30363d" stroke-width="2"/>
@@ -19,7 +19,7 @@
     <text x="130" y="198" fill="#f0f6fc" font-size="25" font-weight="700">Crew Chief</text>
     <text x="105" y="232" fill="#8b949e" font-size="16">Astra / main thread</text>
     <text x="105" y="263" fill="#c9d1d9" font-size="15">contract + architecture</text>
-    <text x="105" y="286" fill="#c9d1d9" font-size="15">final judgment</text>
+    <text x="105" y="286" fill="#c9d1d9" font-size="15">final judgment / no busy polling</text>
 
     <rect x="420" y="128" width="710" height="205" rx="24" fill="#10151c" stroke="#30363d" stroke-width="2"/>
     <text x="455" y="162" fill="#8b949e" font-size="14" font-weight="700" letter-spacing="1.5">EXECUTION CELL</text>
@@ -47,5 +47,5 @@
   <path d="M945 178V118H197v28" fill="none" stroke="#ff6b47" stroke-width="3" stroke-dasharray="9 9" marker-end="url(#arrow)"/>
   <text x="500" y="112" fill="#ff8a6d" font-family="ui-monospace,SFMono-Regular,Menlo,Consolas,monospace" font-size="13">PASS OR REAL ESCALATION</text>
 
-  <text x="455" y="365" fill="#8b949e" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="15">Routine Mechanic failures stay here. The Crew Chief does not become the Inspector.</text>
+  <text x="455" y="365" fill="#8b949e" font-family="ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif" font-size="15">Wait on meaningful state when possible. Routine failures and healthy silence stay out of the Crew Chief.</text>
 </svg>
