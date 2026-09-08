@@ -13,7 +13,7 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Codex-plugin-111111?style=flat-square" alt="Codex plugin">
-  <img src="https://img.shields.io/badge/version-0.1.1-111111?style=flat-square" alt="Version 0.1.1">
+  <img src="https://img.shields.io/badge/version-0.1.2-111111?style=flat-square" alt="Version 0.1.2">
   <img src="https://img.shields.io/badge/status-v1%20experimental-111111?style=flat-square" alt="V1 experimental">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
@@ -49,7 +49,7 @@ The main thread keeps the work that deserves high-level judgment. Luna implement
 
 ## The rule
 
-> **Do not spend Crew Chief judgment on Mechanic work. Do not let the Mechanic or Inspector redesign the car.**
+> **Do not spend Crew Chief judgment on Mechanic work. Do not wake the Crew Chief just to ask whether work is still running. Do not let the Mechanic or Inspector redesign the car.**
 
 Pit Crew v1 is deliberately small. It does not claim to minimize every token, and it does not add speculative routing machinery just because it might help later.
 
@@ -57,9 +57,9 @@ The split is simple:
 
 | Role | Preferred model | Owns | Must not own |
 |---|---|---|---|
-| **Crew Chief** | Main thread, designed for Astra-class reasoning | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Routine intermediate implementation review |
+| **Crew Chief** | Main thread, designed for Astra-class reasoning | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Routine intermediate implementation review or liveness polling |
 | **Mechanic** | Luna when explicit routing is available | Editing, implementation, build/test, bounded fixes | Architecture redesign, scope expansion |
-| **Inspector** | Sol when explicit routing is available | Execution supervision, contract compliance, local correction loop, final execution gate | Editing, new architecture, ambiguous design choices |
+| **Inspector** | Sol when explicit routing is available | Execution supervision, contract compliance, local correction loop, final execution gate | Editing, new architecture, ambiguous design choices, pointless liveness polling |
 
 The Crew Chief can always reject an Inspector `PASS`.
 
@@ -114,11 +114,38 @@ The normal Crew Chief touch points are intentionally narrow:
 
 ```text
 1. Set contract
-2. Receive Inspector PASS
-3. Final architecture / intent review
+2. Sleep while execution is healthy
+3. Receive Inspector PASS or real ESCALATE
+4. Final architecture / intent review
 ```
 
-A Mechanic mistake, failed patch, build error, or local implementation defect is not by itself a reason for the Crew Chief to inspect the diff.
+A Mechanic mistake, failed patch, build error, local implementation defect, wait timeout, or quiet worker is not by itself a reason for the Crew Chief to inspect the diff.
+
+## Stay asleep while the work is healthy
+
+Pit Crew treats idle orchestration as part of the harness, not as useful reasoning work.
+
+A worker that has not produced a new state is not automatically stuck. A wait timeout is not automatically a failure. If the runtime can wake on completion or meaningful state change, Pit Crew prefers that behavior. If polling is the only available mechanism, it should use the longest practical wait the runtime supports instead of repeatedly waking a large model at short intervals.
+
+```text
+BAD
+Crew Chief -> wait -> no change
+Crew Chief -> wait -> no change
+Crew Chief -> wait -> no change
+
+BETTER
+Crew Chief -> contract
+            [execution continues]
+            [harness waits]
+            PASS / ESCALATE
+Crew Chief -> decision
+```
+
+Pit Crew does **not** hardcode a universal polling interval. Runtime wait semantics and completion notification can change. The rule is behavioral: **do not spend model turns on unchanged liveness state when the runtime can avoid it.**
+
+This rule also applies inside the execution cell. Sol should supervise meaningful Luna states, not burn turns merely asking whether Luna is still running.
+
+V0.1.2 expresses this as workflow guidance. It does not modify Codex's internal scheduler or turn `wait_agent` into an event-driven primitive by itself.
 
 ## How it works
 
@@ -146,7 +173,7 @@ The packet goes to Luna for implementation and Sol becomes the execution supervi
 
 The exact runtime messaging topology may vary. The invariant is more important: routine implementation success, failure, and correction stay inside the Luna/Sol cell until `PASS` or a real `ESCALATE`.
 
-If the main thread must relay subagent messages because the runtime does not support direct subagent communication, it should relay them without doing its own intermediate implementation review.
+If the main thread must relay subagent messages because the runtime does not support direct subagent communication, it should relay actual new state without doing its own intermediate implementation review. It should not create extra reasoning turns merely to check liveness.
 
 ### 3. Mechanic attempts the work
 
@@ -239,7 +266,7 @@ Sol must escalate when resolution would require any of the following:
 - contradicting a Crew Chief decision
 - resolving a contract/codebase mismatch where intent is unclear
 
-A Mechanic failure by itself is not an escalation.
+A Mechanic failure, quiet worker, or wait timeout by itself is not an escalation.
 
 ### 7. Crew Chief closes the stop
 
@@ -288,6 +315,7 @@ Or make the intended route explicit:
 Use Pit Crew to implement this mockup.
 Keep architecture and final approval in the main thread.
 Have Sol supervise Luna's implementation and local correction loop.
+Avoid short-interval busy polling while workers are healthy.
 Only return to the main thread for a real escalation or after Sol PASS.
 ```
 
@@ -299,6 +327,7 @@ Pit Crew v1 does **not** include:
 - context-pack or read-compression systems
 - MCP servers
 - lifecycle hooks
+- a custom event-driven scheduler
 - automatic reasoning-effort routing
 - a general-purpose dynamic multi-agent topology planner
 - benchmark claims that have not been measured
@@ -313,13 +342,15 @@ The first real-world tests should track:
 
 - Crew Chief substantive touch points per task
 - unwanted Crew Chief intermediate implementation reviews
+- no-state Crew Chief wake-ups or polling turns
 - Sol <-> Luna correction loops
+- no-state Inspector wake-ups or polling turns
 - issues still found by the Crew Chief after Sol `PASS`
 - unnecessary or incorrect Inspector corrections
 - per-model usage
 - total turns to a clean result
 
-The desired execution property is simple: routine Luna failures should increase the Luna/Sol loop count, not the number of Astra implementation reviews.
+The desired execution property is simple: routine Luna failures should increase the Luna/Sol loop count, not the number of Astra implementation reviews, and healthy worker silence should not create repeated reasoning turns.
 
 If the data later shows a reliable cost, token, or latency improvement, the README can say exactly how much. Until then, it will not pretend.
 
