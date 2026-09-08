@@ -1,7 +1,7 @@
 {
   "name": "pitcrew",
-  "version": "0.1.0",
-  "description": "A multi-model development crew for Codex: Crew Chief decides, Luna builds, Sol inspects.",
+  "version": "0.1.1",
+  "description": "A multi-model development crew for Codex: Crew Chief decides, Luna builds, Sol supervises execution.",
   "author": {
     "name": "groun519",
     "url": "https://github.com/groun519"
@@ -19,8 +19,8 @@
   "skills": "./skills/",
   "interface": {
     "displayName": "Pit Crew",
-    "shortDescription": "Crew Chief decides. Luna builds. Sol inspects.",
-    "longDescription": "A bounded multi-model coding workflow for Codex. The main thread owns architecture and final approval, Luna implements, and Sol reviews and requests only local corrections before the final review.",
+    "shortDescription": "Crew Chief decides. Luna builds. Sol supervises.",
+    "longDescription": "A bounded multi-model coding workflow for Codex. The main thread owns architecture and final approval, while Sol supervises Luna's implementation and local correction loop until the execution cell reaches PASS or needs a real design escalation.",
     "developerName": "groun519",
     "category": "Developer Tools",
     "capabilities": [
@@ -31,7 +31,7 @@
     "websiteURL": "https://github.com/groun519/pitcrew",
     "defaultPrompt": [
       "Use Pit Crew to implement this change.",
-      "Have Luna implement, Sol inspect, then do the final review in the main thread."
+      "Keep architecture and final approval in the main thread. Have Sol supervise Luna until the execution cell reaches PASS, then do the final review in the main thread."
     ]
   }
 }
