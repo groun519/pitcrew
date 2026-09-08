@@ -19,7 +19,7 @@
     <path d="M0 0h42L30 42H-12z" fill="#f1f4f8"/>
     <path d="M52 0h42L82 42H40z" fill="#ff4d4f"/>
     <path d="M-17 52h42L13 94h-42z" fill="#ff4d4f"/>
-    <path d="M35 52h42L65 94H23z" fill="#f1f4f8"/>
+    <path d="M35 52h42L65 94h23z" fill="#f1f4f8"/>
   </g>
 
   <text x="74" y="242" fill="#f7f9fc" font-family="Arial, Helvetica, sans-serif" font-size="104" font-style="italic" font-weight="800" letter-spacing="-4">PIT CREW</text>
@@ -60,7 +60,7 @@
     <rect width="125" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
     <text x="62.5" y="25" text-anchor="middle" fill="#dbe2eb">Codex plugin</text>
     <rect x="142" width="94" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
-    <text x="189" y="25" text-anchor="middle" fill="#dbe2eb">v0.1.0</text>
+    <text x="189" y="25" text-anchor="middle" fill="#dbe2eb">v0.1.1</text>
     <rect x="253" width="138" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
     <text x="322" y="25" text-anchor="middle" fill="#dbe2eb">experimental</text>
     <rect x="408" width="74" height="38" rx="19" fill="#171e28" stroke="#303a48"/>
