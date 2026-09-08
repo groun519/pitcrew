@@ -13,12 +13,13 @@
 
 <p align="center">
   <img src="https://img.shields.io/badge/Codex-plugin-111111?style=flat-square" alt="Codex plugin">
-  <img src="https://img.shields.io/badge/version-0.1.3-111111?style=flat-square" alt="Version 0.1.3">
+  <img src="https://img.shields.io/badge/version-0.1.4-111111?style=flat-square" alt="Version 0.1.4">
   <img src="https://img.shields.io/badge/status-v1%20experimental-111111?style=flat-square" alt="V1 experimental">
   <img src="https://img.shields.io/badge/license-MIT-111111?style=flat-square" alt="MIT license">
 </p>
 
 <p align="center">
+  <a href="#profiles">Profiles</a> &middot;
   <a href="#how-it-works">How it works</a> &middot;
   <a href="#install">Install</a> &middot;
   <a href="#use">Use</a> &middot;
@@ -41,7 +42,7 @@ Give one strong model a coding task and it can do everything: understand the req
 
 **Pit Crew gives that model a crew instead.**
 
-The main thread keeps the work that deserves high-level judgment. Luna implements a bounded packet. Sol supervises Luna's implementation and local correction loop. Only a real design decision returns upstairs before the work is clean; otherwise Astra sees the result again after Sol says `PASS`.
+The main thread keeps the work that deserves high-level judgment. Luna implements a bounded packet. Sol supervises Luna's implementation and local correction loop. Only a real design decision returns upstairs before the work is clean; otherwise the Crew Chief sees the result again after the Inspector says `PASS`.
 
 <p align="center">
   <img src="assets/workflow.svg" width="1000" alt="Pit Crew workflow">
@@ -53,15 +54,79 @@ The main thread keeps the work that deserves high-level judgment. Luna implement
 
 Pit Crew v1 is deliberately small. It does not claim to minimize every token, and it does not add speculative routing machinery just because it might help later.
 
-The split is simple:
+The role split stays the same across profiles:
 
-| Role | Preferred model | Owns | Must not own |
-|---|---|---|---|
-| **Crew Chief** | Main thread, designed for Astra-class reasoning | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Routine intermediate implementation review or liveness polling |
-| **Mechanic** | Luna when explicit routing is available | Editing, implementation, build/test, bounded fixes | Architecture redesign, scope expansion |
-| **Inspector** | Sol when explicit routing is available | Execution supervision, contract compliance, local correction loop, final execution gate | Editing, new architecture, ambiguous design choices, pointless liveness polling |
+| Role | Owns | Must not own |
+|---|---|---|
+| **Crew Chief** | User intent, architecture, scope, implementation contract, escalation decisions, final approval | Routine intermediate implementation review or liveness polling |
+| **Mechanic** | Editing, implementation, build/test, bounded fixes | Architecture redesign, scope expansion |
+| **Inspector** | Execution supervision, contract compliance, local correction loop, final execution gate | Editing, new architecture, ambiguous design choices, pointless liveness polling |
 
 The Crew Chief can always reject an Inspector `PASS`.
+
+## Profiles
+
+Pit Crew v0.1.4 has two fixed model profiles.
+
+| Profile | Crew Chief | Inspector | Mechanic |
+|---|---|---|---|
+| **Quality** | **Astra / high** | **Sol / xhigh** | **Luna / xhigh** |
+| **Balanced** | **Sol / xhigh** | **Sol / high** | **Luna / high** |
+
+### Quality
+
+Quality is the default Pit Crew route and prioritizes reducing avoidable quality loss over minimizing model effort.
+
+```text
+Crew Chief : Astra high
+Inspector  : Sol xhigh
+Mechanic   : Luna xhigh
+```
+
+Use it for architecture-heavy work, important refactors, new systems, responsibility changes, or any task where the strongest main-thread judgment is worth the extra usage.
+
+### Balanced
+
+Balanced keeps the same harness and the same review boundaries, but removes Astra from ordinary implementation work.
+
+```text
+Crew Chief : Sol xhigh
+Inspector  : Sol high
+Mechanic   : Luna high
+```
+
+It is intended for work where the architecture is already reasonably understood: bounded feature implementation, normal refactoring, bug fixing, extending an established system, or implementing an already-approved mockup.
+
+Balanced is not an Economy mode. Sol still owns every judgment/review role, and Luna still gets a high reasoning budget for implementation.
+
+### Why Luna stays strong
+
+Pit Crew does not lower Luna to medium or low in either profile. Luna is the cheapest execution role in the crew, and a stronger first implementation may avoid a more expensive cycle of:
+
+```text
+Luna implementation
+      -> Sol review
+LOCAL_FIX
+      -> Luna correction
+      -> Sol re-review
+```
+
+The profile is therefore designed to spend reasoning earlier in the bounded Mechanic step when that can reduce later Inspector work.
+
+### The main thread matters
+
+The Crew Chief is the main Codex thread that is already open. Pit Crew does not silently replace that parent model or its reasoning effort.
+
+Before using a profile, select the matching main-thread setting:
+
+```text
+Quality  -> start Codex with Astra high
+Balanced -> start Codex with Sol xhigh
+```
+
+If the runtime can verify the current main model/effort and it does not match the requested profile, Pit Crew should report the mismatch instead of pretending the profile is active. If the runtime cannot expose that information, the Crew Chief route remains unverified and should be reported as such.
+
+A plain `Use Pit Crew ...` means **Quality**. Use `Pit Crew Balanced` explicitly when you want the lower-cost profile. Pit Crew does not automatically choose between Quality and Balanced from its own estimate of task difficulty.
 
 ## Before / after
 
@@ -127,7 +192,7 @@ Pit Crew treats idle orchestration as part of the harness, not as useful reasoni
 
 A worker that has not produced a new state is not automatically stuck. A wait timeout is not automatically a failure. If the runtime can wake on completion or meaningful state change, Pit Crew prefers that behavior.
 
-Pit Crew v0.1.3 also makes the wait concrete. When Codex exposes a `wait_agent` timeout parameter, a healthy worker wait should explicitly request:
+When Codex exposes a `wait_agent` timeout parameter, a healthy worker wait should explicitly request:
 
 ```text
 wait_agent timeout_ms = 1200000
@@ -149,20 +214,28 @@ Crew Chief -> contract
 Crew Chief -> decision
 ```
 
-The 20-minute value is an **experimental Pit Crew tuning value, not a universal law**. It is deliberately long enough to cover ordinary implementation runs without repeatedly waking a large parent context, but it should be changed if measurements or Codex wait semantics justify a better value.
+The 20-minute value is an **experimental Pit Crew tuning value, not a universal law**. It should change if measurements or Codex wait semantics justify a better value.
 
 This rule also applies inside the execution cell. Sol should supervise meaningful Luna states, not burn turns merely asking whether Luna is still running. If Sol itself must wait through a supported `wait_agent` surface, it uses the same explicit long wait.
 
-V0.1.3 expresses this through workflow instructions. It does not modify Codex's internal scheduler, guarantee that every client exposes the same wait surface, or turn `wait_agent` into a different runtime primitive.
+Pit Crew expresses this through workflow instructions. It does not modify Codex's internal scheduler, guarantee that every client exposes the same wait surface, or turn `wait_agent` into a different runtime primitive.
 
 ## How it works
 
-### 1. Crew Chief sets the contract
+### 1. Choose the profile and set the Crew Chief
 
-The main thread reads the request or mockup, inspects enough existing code to make the architecture decision, and produces a bounded implementation packet.
+Select the main-thread model/effort before starting the task:
+
+```text
+Quality  : Astra high
+Balanced : Sol xhigh
+```
+
+Pit Crew then reads the request or mockup, inspects enough existing code to make the architecture decision, and produces a bounded implementation packet.
 
 ```text
 IMPLEMENTATION PACKET
+profile: <Quality or Balanced>
 objective: <one clear objective>
 scope:
 - <files/systems/state allowed to change>
@@ -178,6 +251,18 @@ validation:
 ### 2. Start the execution cell
 
 The packet goes to Luna for implementation and Sol becomes the execution supervisor for that same contract.
+
+When Codex supports explicit subagent model and effort routing, Pit Crew requests the profile exactly:
+
+```text
+QUALITY
+Inspector : Sol xhigh
+Mechanic  : Luna xhigh
+
+BALANCED
+Inspector : Sol high
+Mechanic  : Luna high
+```
 
 The exact runtime messaging topology may vary. The invariant is more important: routine implementation success, failure, and correction stay inside the Luna/Sol cell until `PASS` or a real `ESCALATE`.
 
@@ -313,32 +398,41 @@ codex plugin list
 
 ## Use
 
-Ask Codex to use Pit Crew for an implementation or refactor task.
+### Quality
+
+Select **Astra high** as the main thread, then ask:
+
+```text
+Use Pit Crew Quality to implement this mockup.
+```
+
+A plain Pit Crew request also defaults to Quality:
 
 ```text
 Use Pit Crew for this task.
 ```
 
-Or make the intended route explicit:
+### Balanced
+
+Select **Sol xhigh** as the main thread, then ask:
 
 ```text
-Use Pit Crew to implement this mockup.
-Keep architecture and final approval in the main thread.
-Have Sol supervise Luna's implementation and local correction loop.
-Use the Pit Crew long wait when wait_agent supports timeout_ms.
-Only return to the main thread for a real escalation or after Sol PASS.
+Use Pit Crew Balanced to implement this mockup.
 ```
+
+Both profiles preserve the same contract, Inspector-led execution cell, `PASS / LOCAL_FIX / ESCALATE` behavior, and long-wait policy.
 
 ## V1 is intentionally missing things
 
 Pit Crew v1 does **not** include:
 
+- an Economy profile
+- automatic task-complexity based profile selection
 - mandatory Sol pre-contract repository search
 - context-pack or read-compression systems
 - MCP servers
 - lifecycle hooks
 - a custom event-driven scheduler
-- automatic reasoning-effort routing
 - a general-purpose dynamic multi-agent topology planner
 - benchmark claims that have not been measured
 
@@ -350,6 +444,7 @@ Before putting numbers in the hero section, Pit Crew should earn them.
 
 The first real-world tests should track:
 
+- selected profile
 - Crew Chief substantive touch points per task
 - unwanted Crew Chief intermediate implementation reviews
 - no-state Crew Chief wake-ups or polling turns
@@ -360,12 +455,11 @@ The first real-world tests should track:
 - unnecessary or incorrect Inspector corrections
 - per-model usage
 - total turns to a clean result
+- Quality versus Balanced usage and final-result differences on comparable work
 
-The immediate v0.1.3 experiment is simple: a normal task that finishes inside the long wait should produce completion activity before the timeout instead of a chain of short no-state Crew Chief wake-ups.
+The desired execution property remains the same: routine Luna failures should increase the Luna/Sol loop count, not the number of Crew Chief implementation reviews, and healthy worker silence should not create repeated reasoning turns.
 
-The broader desired execution property remains the same: routine Luna failures should increase the Luna/Sol loop count, not the number of Astra implementation reviews, and healthy worker silence should not create repeated reasoning turns.
-
-If the data later shows a reliable cost, token, or latency improvement, the README can say exactly how much. Until then, it will not pretend.
+If the data later shows a reliable cost, token, latency, or quality difference between the profiles, the README can say exactly how much. Until then, it will not pretend.
 
 ## Repository layout
 
