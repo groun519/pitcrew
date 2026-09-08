@@ -1,6 +1,6 @@
 {
   "name": "pitcrew",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "A multi-model development crew for Codex: Crew Chief decides, Luna builds, Sol supervises execution.",
   "author": {
     "name": "groun519",
@@ -20,7 +20,7 @@
   "interface": {
     "displayName": "Pit Crew",
     "shortDescription": "Crew Chief decides. Luna builds. Sol supervises.",
-    "longDescription": "A bounded multi-model coding workflow for Codex. The main thread owns architecture and final approval, while Sol supervises Luna's implementation and local correction loop. Healthy execution stays inside the cell without short-interval Crew Chief polling until PASS or a real design escalation.",
+    "longDescription": "A bounded multi-model coding workflow for Codex. The main thread owns architecture and final approval, while Sol supervises Luna's implementation and local correction loop. Healthy execution stays inside the cell, and supported wait_agent calls use an explicit long wait to avoid repeated short-interval Crew Chief wake-ups.",
     "developerName": "groun519",
     "category": "Developer Tools",
     "capabilities": [
@@ -31,7 +31,7 @@
     "websiteURL": "https://github.com/groun519/pitcrew",
     "defaultPrompt": [
       "Use Pit Crew to implement this change.",
-      "Keep architecture and final approval in the main thread. Have Sol supervise Luna until the execution cell reaches PASS. Avoid short-interval busy polling while workers are healthy, and return to the main thread only for a real escalation or final review."
+      "Keep architecture and final approval in the main thread. Have Sol supervise Luna until the execution cell reaches PASS. When wait_agent supports timeout_ms, use Pit Crew's explicit long wait instead of the short default while workers are healthy. Return to the main thread only for a real escalation or final review."
     ]
   }
 }
